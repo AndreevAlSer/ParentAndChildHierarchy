@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
+    <head>
+        <meta charset="utf-8" /> 
+        <link href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" rel="stylesheet" />
+        <title>RESTful API Company</title> 
+        <script src="https://code.jquery.com/jquery-3.1.0.min.js" integrity="sha256-cCueBR6CsyA4/9szpPfrX3s49M9vUU5BgtiJj06wt/s=" crossorigin="anonymous"></script> 
+        <script>
+            $(document).ready(function () {     
+
+                var _renderTree = function(tree) 
+                {
+                    var e, html, _i, _len;
+                    html = "<ul>";
+                    for (_i = 0, _len = tree.length; _i < _len; _i++) 
+                    {
+                        e = tree[_i];
+                        html += '<li>' + e.companyID + '  |  '+ e.companyName + '  |  ' + e.companyEarning + '  |  ' + e.totalCompanyEarnings;
+                        if (e.children != null) 
+                        {
+                            html += _renderTree(e.children);
+                        }
+                        html += '</li>';
+                    }
+                    html += "</ul>";
+                    return html;
+                }
+
+                var _makeTree = function(options)
+                {
+                    var children, e, id, o, pid, temp, _i, _len, _ref;
+                    id = options.companyID || "companyID";
+                    pid = options.parentID || "parentID";
+                    children = options.children || "children";
+                    temp = {};
+                    o = [];
+                    _ref = options.q;
+                    for (_i = 0, _len = _ref.length; _i < _len; _i++) 
+                    {
+                        e = _ref[_i];
+                        e[children] = [];
+                        temp[e[id]] = e;
+                        if (temp[e[pid]] != null) 
+                        {
+                            temp[e[pid]][children].push(e);
+                        }
+                        else {
+                            o.push(e);
+                        }
+                    }
+                    return o;
+                }
+
+                var _queryTreeSort = function(options) 
+                {
+                    var cfi, e, i, id, o, pid, rfi, ri, thisid, _i, _j, _len, _len1, _ref, _ref1;
+                    id = options.companyID || "companyID";
+                    pid = options.parentID || "parentID";
+                    ri = [];
+                    rfi = {};
+                    cfi = {};
+                    o = [];
+                    _ref = options.q;
+                    for (i = _i = 0, _len = _ref.length; _i < _len; i = ++_i) {
+                        e = _ref[i];
+                        rfi[e[id]] = i;
+                        if (cfi[e[pid]] == null) {
+                            cfi[e[pid]] = [];
+                        }
+                        cfi[e[pid]].push(options.q[i][id]);
+                    }
+                    _ref1 = options.q;
+                    for (_j = 0, _len1 = _ref1.length; _j < _len1; _j++) {
+                        e = _ref1[_j];
+                        if (rfi[e[pid]] == null) {
+                            ri.push(e[id]);
+                        }
+                    }
+                    while (ri.length) {
+                        thisid = ri.splice(0, 1);
+                        o.push(options.q[rfi[thisid]]);
+                        if (cfi[thisid] != null) {
+                            ri = cfi[thisid].concat(ri);
+                        }
+                    }
+                    return o;
+                }
+
+                // запрос для загрузки всех элементов 
+                function getItems() { 
+                    $.ajax({
+                        url: 'http://localhost:8080/api/', 
+                        accepts: 'application/json', 
+                        method: 'GET', 
+                        success: function (data) {
+
+                            var items = data["recordsets"][0];                            
+                            sortedquery = _queryTreeSort({q:items});
+
+                            tree = _makeTree({q:sortedquery});
+
+                            htmllist = _renderTree(tree);
+                            $('#htmllist').html(htmllist);                           
+                        }
+                    });
+                }
+                getItems();             
+
+                // запрос для просмотра отдельного элемента 
+                $('#select').on('click', function () {
+                    var itemID = $('#companyID1').val(); 
+                    var tbody = document.getElementById('tbody'); 
+                        $.ajax({
+                            url: 'http://localhost:8080/api/' + itemID,
+                            accept: 'application/json',
+                            type: 'GET',
+                            success: function (data) {
+                                
+                                var item = data; 
+
+                                var html = 
+                                    `<td>${item.companyID}</td>
+                                        <td>${item.parentID}</td>
+                                        <td>${item.companyName}</td>
+                                        <td>${item.companyEarning}</td>
+                                        <td>${item.totalCompanyEarnings}</td>
+                                    </td> `
+
+                                tbody.innerHTML = html;
+                                
+                                $('#back').css({
+                                    display: 'block' 
+                                })
+                            } 
+                        })
+                })
+
+                // запрос для удаления элемента 
+                $('#delete').on('click', function () {
+                    var itemID = $('#companyID1').val();
+                        $.ajax({
+                            url: 'http://localhost:8080/api/' + itemID,
+                            accept: 'application/json',
+                            type: 'DELETE',
+                            success: function () {
+                                window.location.href = '/'
+                            }
+                        })
+                })
+
+                // запрос для обновления элемента 
+                $('#update').on('click', function () {
+                    var companyID = $('#companyID').val();
+
+                        if ($('#companyName').val() == '' || $('#companyName').val() == '' ||
+                            $('#parentID').val() == '' || $('#companyID').val() == '') {
+                            alert('empty field!');
+                            return;
+                        }
+
+                        if($('#parentID').val() == $('#companyID').val())
+                        {
+                            alert('Please, select correct parentID!');
+                            return;
+                        }
+
+        /*                if(typeof($('#companyID').val()) != 'number')
+                        {
+                            console.log(typeof($('#companyID').val()))
+                            alert('Type of field companyID must be INT!');
+                            return;
+                        }
+
+                        if(typeof($('#parentID').val()) != 'number')
+                        {
+                            alert('Type of field parentID must be INT!');
+                            return;
+                        }
+
+                        if(typeof($('#companyEarning').val()) != 'number')
+                        {
+                            alert('Type of field companyEarning must be INT!');
+                            return;
+                        }
+
+                        if(typeof($('#companyName').val()) != 'string')
+                        {
+                            console.log(typeof ($('#companyName').val()))
+                            alert('Type of CompanyName must be STRING!');
+                            return;
+                        }            */       
+
+                        var requestData = {
+                            companyID: $('#companyID').val(),
+                            parentID: $('#parentID').val(),
+                            companyName: $('#companyName').val(),
+                            companyEarning: $('#companyEarning').val()
+                        }
+
+                        $.ajax({
+                            url: 'http://localhost:8080/api/' + companyID,
+                            type: 'PUT',
+                            data: JSON.stringify(requestData),
+                            contentType: 'application/json', 
+                            success: function() {
+                                window.location.href = '/'
+                            }
+                        })
+                })
+
+                // запрос для создания элемента 
+                $('#create').on('click', function () {
+                    
+                    if ($('#companyName').val() == '') {
+                        alert('empty field!'); 
+                        return;
+                    }
+
+                    var requestData = {
+                        // companyID: $('#companyID').val(),
+                        parentID: $('#parentID').val(),
+                        companyName: $('#companyName').val(),
+                        companyEarning: $('#companyEarning').val()                
+                    }
+
+                    console.log(JSON.stringify(requestData));                
+                    console.log(requestData);
+
+                    $.ajax({
+                        url: 'http://localhost:8080/api/new',
+                        type: 'POST',
+                        contentType: 'application/json', 
+                        data: JSON.stringify(requestData),
+                        success: function () {
+                            window.location.href = '/'
+                        }
+                    }) 
+                })
+            });
+        </script>
+    </head>
+    <body>
+        <div class="panel well">
+            <a id="back" href="/" style="display: none"><h4>Back to items</h4></a>
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>ParentID</th>
+                    <th>Oranization Name</th>
+                    <th>Company Earning</th>
+                    <th>Total Company Earning</th>
+                </tr>
+            </thead>
+            <tbody id="tbody">
+
+            </tbody>
+        </table>
+    </div> 
+        <h3 style="padding-left: 25px;">Organizations</h3>
+        <div id="html">
+            
+        </div>
+        <div id="htmllist">
+            
+        </div>
+        <div class="panel" style="padding-left: 25px; padding-bottom: 25px;"> 
+        <h3>View or delete item</h3> 
+        <div class="form-group" style="width: 300px">
+               <label>Company ID</label> <input id="companyID1" class="form-control input-lg">
+        </div>
+        <button id="select" class="btn btn-info btn-lg">View Company by ID</button>
+        <button id="delete" class="btn btn-danger btn-lg">Delete Company by ID</button>
+    </div> 
+    <div class="panel" style="padding-left: 25px; padding-bottom: 25px;"> 
+        <h3>Create or edit item</h3> 
+        <div class="form-group" style="width: 300px">
+            <div class="form-group" style="width: 300px">
+                <label>Company ID (Only for update) </label> <input id="companyID" class="form-control input-lg">
+                <label>Parent ID (Enter "-1" value for the company on top-level hierarchy)</label>                 
+                <input id="parentID" class="form-control input-lg" min="-1">
+            </div>
+            <label>Company Name</label> <input id="companyName" class="form-control input-lg" />
+        </div>
+            <div class="form-group" style="width: 300px">
+                <label>Company earning</label> <input id="companyEarning" max="99" class="form-control input-lg" />
+            </div>
+        <button id="update" class="btn btn-warning btn-lg">Update Company</button>
+        <button id="create" class="btn btn-success btn-lg">Create Company</button>
+     </div>
+    </body>
+</html>
