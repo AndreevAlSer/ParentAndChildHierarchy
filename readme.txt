@@ -24,5 +24,5 @@ npm i mssql
 c:\ElifTech\api> node main
 c:\ElifTech\app> node main
 16.Запускаем браузер, приложение будет работать по адресу htttp://localhost:8081.
-17.Видео инструкция работы приложения прилагается.
+17.Видео инструкция работы приложения прилагается по ссылке: https://drive.google.com/drive/folders/1Oqh4U6VjxS8HBE8VZKr1fS52wvvMQoHB
 
